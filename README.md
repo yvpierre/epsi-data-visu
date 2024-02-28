@@ -1,10 +1,6 @@
 # EPSI Data visualisation
 Application requires Python3
-## Install depedencies 
+## Install depedencies & Start app with script
 ```
-pip3 install -r ./requirements.txt
-```
-## Start app
-```
-python3 app.py
+. ./start.sh
 ```
