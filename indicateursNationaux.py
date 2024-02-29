@@ -2,40 +2,50 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Load data from Excel file
-excel_file = './excelFiles/indicateurs_nationaux_apprentissage_2020_2021.xlsx'
-df = pd.read_excel(excel_file, sheet_name="Par niveau et spécialité")
+excel_file_path = './excelFiles/indicateurs_nationaux_apprentissage_2020_2021.xlsx'
 
-# Specify the column indexes you want for the X-axis and different types of answers
-x_axis_index = 1
-answer_indexes = [9, 10, 11, 12, 13]
+df_niveau_specialite = pd.read_excel(excel_file_path, sheet_name='Par niveau et spécialité')
+df_prepared = df_niveau_specialite.iloc[2:].copy()
+df_prepared.columns = df_niveau_specialite.iloc[1]
 
-# Extract data for X-axis (questions) and different types of answers
-questions = [str(q) for q in df.iloc[:, x_axis_index].tolist()]
-answers_data = df.iloc[:, answer_indexes].values.T  # Transpose to have answers as rows
+df_prepared = df_prepared[~df_prepared['Niveau de formation (regroupé)'].str.contains("ensemble", case=False, na=False)]
 
-def survey(questions, answers_data):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.invert_yaxis()
-    ax.xaxis.set_visible(False)
+columns_to_convert = ['dont : CDI', 'dont : CDD', 'dont : Intérim', 'dont : Contrat pro', 'dont : Autres']
+for column in columns_to_convert:
+    df_prepared[column] = pd.to_numeric(df_prepared[column], errors='coerce').fillna(0).astype(float)
 
-    category_colors = plt.cm.RdYlGn(np.linspace(0.15, 0.85, len(answer_indexes)))
+grouped = df_prepared.groupby('Niveau de formation (regroupé)').agg({
+    'dont : CDI': 'sum',
+    'dont : CDD': 'sum',
+    'dont : Intérim': 'sum',
+    'dont : Contrat pro': 'sum',
+    'dont : Autres': 'sum'
+}).reset_index()
 
-    data_cum = np.zeros_like(answers_data[0])
+grouped.columns = ['Niveau de Formation', 'CDI', 'CDD', 'Intérim', 'Contrat Pro', 'Autres']
 
-    for i, (answer_index, color) in enumerate(zip(answer_indexes, category_colors)):
-        widths = answers_data[i]
-        starts = data_cum
-        rects = ax.barh(questions, widths, left=starts, height=0.5,
-                        label=f"Answer {answer_index}", color=color)
+category_totals = grouped[['CDI', 'CDD', 'Intérim', 'Contrat Pro', 'Autres']].sum(axis=1)
+grouped_prop = grouped[['CDI', 'CDD', 'Intérim', 'Contrat Pro', 'Autres']].div(category_totals, axis=0)
 
-        data_cum += widths
+category_names = ['CDI', 'CDD', 'Intérim', 'Contrat Pro', 'Autres']
+labels = grouped['Niveau de Formation']
+data = grouped_prop.to_numpy()
 
-        r, g, b, _ = color
-        text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
-        ax.bar_label(rects, labels=[f'{width:.2f}' for width in widths], label_type='center', color=text_color)
+fig, ax = plt.subplots(figsize=(10, 8))
 
-    ax.legend(bbox_to_anchor=(0, 1), loc='lower left', fontsize='small')
-    plt.show()
+category_colors = plt.get_cmap('RdYlGn')(np.linspace(0.15, 0.85, len(category_names)))
 
-survey(questions, answers_data)
+start = np.zeros(len(labels))
+
+for i, (colname, color) in enumerate(zip(category_names, category_colors)):
+    widths = data[:, i]
+    ax.barh(labels, widths, left=start, label=colname, color=color)
+    start = start + widths
+
+ax.invert_xaxis()
+
+ax.set_xlabel('Proportion')
+ax.set_title('Répartition des types de contrats par niveau de formation')
+ax.legend(ncol=len(category_names), bbox_to_anchor=(0, 1), loc='lower left', fontsize='small')
+
+plt.show()
