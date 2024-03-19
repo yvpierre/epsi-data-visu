@@ -46,6 +46,11 @@ ax.invert_xaxis()
 
 ax.set_xlabel('Proportion')
 ax.set_title('Répartition des types de contrats par niveau de formation')
-ax.legend(ncol=len(category_names), bbox_to_anchor=(0, 1), loc='lower left', fontsize='small')
+ax.legend(
+    ncol=len(category_names), 
+    bbox_to_anchor=(0, -0.1),
+    loc='upper left', 
+    fontsize='small'
+)
 
 plt.show()
